@@ -1,17 +1,37 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
-require 'faker'
-   676.times do
-     Product.create(
-       title: Faker::Commerce.product_name,
-       price: Faker::Commerce.price(range: 0..100.0),
-       stock_quantity: Faker::Number.between(from: 1, to: 100)
-     )
-   end
+require 'csv'
+
+# Clear existing data to avoid duplication
+puts "Clearing existing data..."
+Product.destroy_all
+Category.destroy_all
+
+# Read data from CSV
+csv_file = Rails.root.join('db/products.csv')
+csv_data = File.read(csv_file)
+
+# If CSV was created by Excel in Windows, you may need to set an encoding type:
+# products = CSV.parse(csv_data, headers: true, encoding: 'iso-8859-1')
+products = CSV.parse(csv_data, headers: true)
+
+# Loop through each row in the CSV
+products.each_with_index do |row, index|
+  # Get the category name from the CSV row
+  category_name = row['category']
+
+  # Find or create the category
+  category = Category.find_or_create_by(name: category_name)
+
+  # Create the product
+  Product.create(
+    title: row['name'],
+    description: row['description'],
+    price: row['price'].to_f, # Convert price to float
+    stock_quantity: row['stock quantity'].to_i, # Convert stock_quantity to integer
+    category: category
+  )
+
+  # Log progress
+  puts "Created product #{index + 1}/#{products.size}" if (index + 1) % 50 == 0
+end
+
+puts "Seeding completed successfully!"
